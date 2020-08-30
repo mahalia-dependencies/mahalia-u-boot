@@ -5,9 +5,11 @@ pipeline {
       steps {
         sh "make am335x_boneblack_defconfig"
         sh "ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- make -j4"
-        sh "tools/mkimage -C none -A arm -T script -d mahalia-bootloader.boot.cmd boot.scr"
-        sh "tools/mkimage -C none -A arm -T script -d mahalia-bootloader.boot-emmc.cmd boot-emmc.scr"
-        sh 'mhamakedeb mahalia-bootloader.csv $(cat mahalia-bootloader.version) armhf'
+        sh "tools/mkimage -C none -A arm -T script -d mahalia/boot.cmd boot.scr"
+        sh("tools/mkimage -C none -A arm -T script -d mahalia/boot-emmc.cmd" +
+           "              boot-emmc.scr")
+        sh("mhamakedeb    mahalia/mahalia-bootloader.csv" +
+           '              $(cat mahalia/bootloader.version) armhf')
         stash name: "deb", includes: '*.deb'
         archiveArtifacts "*.deb"
       }

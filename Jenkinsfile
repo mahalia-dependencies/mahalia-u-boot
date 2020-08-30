@@ -7,7 +7,7 @@ pipeline {
                 sh "ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- make -j4"
                 sh "tools/mkimage -C none -A arm -T script -d boot.cmd boot.scr"
                 sh "tools/mkimage -C none -A arm -T script -d boot-emmc.cmd boot-emmc.scr"
-                sh "mhamakedeb mahalia-bootloader.csv"
+                sh 'mhamakedeb mahalia-bootloader.csv $(cat version) armhf'
                 stash name: "deb", includes: '*.deb'
                 archiveArtifacts "*.deb"
             }

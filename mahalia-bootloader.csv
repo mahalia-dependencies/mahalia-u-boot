@@ -1,0 +1,4 @@
+MLO,/boot
+u-boot.img,/boot
+boot.scr,/boot
+boot-emmc.scr,/boot

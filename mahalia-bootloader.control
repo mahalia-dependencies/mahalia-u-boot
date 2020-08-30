@@ -1,0 +1,4 @@
+Section: admin
+Maintainer: openMHA Packaging Team <packaging@openmha.org>
+Description: openMHA mahalia bootloader
+Homepage: https://mahalia.hoertech.de

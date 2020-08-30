@@ -8,8 +8,8 @@ pipeline {
         sh "tools/mkimage -C none -A arm -T script -d mahalia/boot.cmd boot.scr"
         sh("tools/mkimage -C none -A arm -T script -d mahalia/boot-emmc.cmd" +
            "              boot-emmc.scr")
-        sh("mhamakedeb    mahalia/mahalia-bootloader.csv" +
-           '              $(cat mahalia/bootloader.version) armhf')
+        sh("mhamakedeb mahalia/mahalia-bootloader.csv" +
+           '           $(make ubootversion).mha.$(cat mahalia/version) armhf')
         stash name: "deb", includes: '*.deb'
         archiveArtifacts "*.deb"
       }

@@ -1,36 +1,66 @@
+// Declarative Jenkins pipeline to build the boot loader for mahalia
 pipeline {
+
+  // This build needs a Jenkins agent that can cross-compile the boot loader and
+  // the kernel. Target of cross-compilation is armv7. Refine labels when needed.
   agent {label "kernel && cross"}
+
   stages {
-    stage("build") {
+    stage("compile and package") {
       steps {
+        // The following build steps automate Chris' instructions from
+        // https://github.com/mahalia-dependencies/mahalia-utils/blob/master/compile_kernel/compile_u-boot.md
+
+        // Create default configuration for beaglebone black boot loader
         sh "make am335x_boneblack_defconfig"
+
+        // Build beaglebone black bootloader
         sh "ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- make -j4"
+
+        // Translate boot script for booting from SD card to binary
         sh "tools/mkimage -C none -A arm -T script -d mahalia/boot.cmd boot.scr"
+
+        // Translate boot script for booting from on-board flash to binary
         sh("tools/mkimage -C none -A arm -T script -d mahalia/boot-emmc.cmd" +
            "              boot-emmc.scr")
+
+        // Pack boot loader components into debian package
         sh("mhamakedeb mahalia/mahalia-bootloader.csv" +
            '           $(make ubootversion).mha.$(cat mahalia/version) armhf')
+
+        // Store debian package in stash for next Jenkinsfile stage below
         stash name: "deb", includes: '*.deb'
+
+        // Additionally, publish bootloader debian package as Jenkins artifact
         archiveArtifacts "*.deb"
       }
     }
-    /*
-    stage("debian packages for apt") {
+
+    stage("store debian packages for apt") {
+      // This stage stores the new debian package in our storage from which
+      // the apt repository is generated.  It needs to be executed in container
+      // "aptly" to ensure (1) proper synchronization (maximum 1 "aptly"
+      // instance allowed at any time) and (2) access to the storage disk.
       agent {label "aptly"}
       steps {
-        // receive all deb packages from openmha build
+        // remove artifacts from previous builds
+        sh "rm -rf *deb" // removes any packages and directories
+
+        // receive deb packages from previous "compile and package" stage
         unstash "deb"
-        archiveArtifacts "*.deb"
 
-        // Copies the new debs to the stash of existing debs,
-        sh "make storage"
+        // We will use the same bootloader regardless of ubuntu/debian release
+        sh "mkdir -p deb/bionic && ln *.deb deb/bionic/"
 
+        // Copies the new debs to the stash of existing debs
+        sh "make -f mahalia/storage.mk storage"
+
+        // Trigger update of the apt repository in Jenkins job "hoertech-aptly"
         build job:         "/hoertech-aptly/master",
               quietPeriod: 300,
               wait:        false
       }
     }
-    */
   }
 
   // Email notification on failed build taken from
@@ -39,7 +69,7 @@ pipeline {
   // https://jenkins.io/doc/pipeline/steps/workflow-basic-steps/#-mail-%20mail
   post {
     failure {
-      mail to: 't.herzke@hoertech.de',
+      mail to: 't.herzke@hoertech.de,m.zimmermann@hoertech.de,p.maanen@hoertech.de',
            subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
            body: "Something is wrong with ${env.BUILD_URL}"
     }
